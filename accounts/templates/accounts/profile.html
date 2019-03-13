@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block head %}
+<title>Profile</title>
+{% endblock %}
+{% block body %}
+{% if user.is_authenticated %}
+<div class="container">
+    <h2>Profile</h2>
+    <p><b>Username:</b> {{user}}</p>
+    <p><b>First Name:</b> {{user.first_name}}</p>
+    <p><b>Last Name:</b> {{user.last_name}}</p>
+    <p><b>Email:</b> {{user.email}}</p>
+    <p><a href="/account/profile/edit" class="btn btn-primary btn-sm" role="button">Edit Profile</a> </p>
+    <p><a href="/account/profile/change-password" class="btn btn-primary btn-sm" role="button">Change Password</a> </p>
+
+
+
+</div>
+{% endif %}
+
+
+
+{% endblock %}

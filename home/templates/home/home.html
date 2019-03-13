@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="container">
+  <h1>Movie Recsys</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.post }}
+    <br>
+    <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+  </form>
+  {% for post in posts %}
+    <h1>{{ post.post }}</h1>
+  <hr>
+  <p>Posted by <b>{{ post.user.get_full_name }}</b> on {{ post.date }}</p>
+  <br>
+  {% endfor %}
+
+</div>
+
+{% endblock %}
