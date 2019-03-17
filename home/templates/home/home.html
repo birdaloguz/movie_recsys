@@ -1,21 +1,143 @@
 {% extends 'base.html' %}
 
 {% block body %}
+<style>
+@import('https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.0/css/bootstrap.min.css')
+.funkyradio div {
+  clear: both;
+  overflow: hidden;
+}
+
+.funkyradio label {
+  width: 100%;
+  border-radius: 3px;
+  border: 1px solid #D1D3D4;
+  font-weight: normal;
+}
+
+.funkyradio input[type="radio"]:empty,
+.funkyradio input[type="checkbox"]:empty {
+  display: none;
+}
+
+.funkyradio input[type="radio"]:empty ~ label,
+.funkyradio input[type="checkbox"]:empty ~ label {
+  position: relative;
+  line-height: 2.5em;
+  text-indent: 3.25em;
+  margin-top: 2em;
+  cursor: pointer;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+}
+
+.funkyradio input[type="radio"]:empty ~ label:before,
+.funkyradio input[type="checkbox"]:empty ~ label:before {
+  position: absolute;
+  display: block;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  content: '';
+  width: 2.5em;
+  background: #D1D3D4;
+  border-radius: 3px 0 0 3px;
+}
+
+.funkyradio input[type="radio"]:hover:not(:checked) ~ label,
+.funkyradio input[type="checkbox"]:hover:not(:checked) ~ label {
+  color: #888;
+}
+
+.funkyradio input[type="radio"]:hover:not(:checked) ~ label:before,
+.funkyradio input[type="checkbox"]:hover:not(:checked) ~ label:before {
+  content: '\2714';
+  text-indent: .9em;
+  color: #C2C2C2;
+}
+
+.funkyradio input[type="radio"]:checked ~ label,
+.funkyradio input[type="checkbox"]:checked ~ label {
+  color: #777;
+}
+
+.funkyradio input[type="radio"]:checked ~ label:before,
+.funkyradio input[type="checkbox"]:checked ~ label:before {
+  content: '\2714';
+  text-indent: .9em;
+  color: #333;
+  background-color: #ccc;
+}
+
+.funkyradio input[type="radio"]:focus ~ label:before,
+.funkyradio input[type="checkbox"]:focus ~ label:before {
+  box-shadow: 0 0 0 3px #999;
+}
+
+.funkyradio-success input[type="radio"]:checked ~ label:before,
+.funkyradio-success input[type="checkbox"]:checked ~ label:before {
+  color: #fff;
+  background-color: #5cb85c;
+}
+
+</style>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+
 <div class="container">
   <h1>Movie Recsys</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.post }}
-    <br>
-    <button type="submit" class="btn btn-primary btn-sm">Submit</button>
-  </form>
-  {% for post in posts %}
-    <h1>{{ post.post }}</h1>
-  <hr>
-  <p>Posted by <b>{{ post.user.get_full_name }}</b> on {{ post.date }}</p>
   <br>
-  {% endfor %}
-
+<div class="funkyradio">
+  <form class="movies" method="post">
+  {% csrf_token %}
+      {% for movie in movies %}
+          <div class="funkyradio-success col-md-6">
+            <input class="movies-top" type="checkbox" name="checks[]" value="{{ movie.movie_id }}" id="checkbox{{ forloop.counter }}"/>
+            <label for="checkbox{{ forloop.counter }}">{{ movie.title }}</label>
+          </div>
+      {% endfor %}
+      <div class="col-md-6">
+      <input type="submit" name="movie-form" value="Confirm" class="btn btn-primary btn-sm">
+      </div>
+  </form>
 </div>
+    <div class="col-md-12" style="margin-top: 20px;">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.post }}
+        <br>
+        <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+      </form>
+      {% for post in posts %}
+        <h1>{{ post.post }}</h1>
+      <hr>
+      <p>Posted by <b>{{ post.user.get_full_name }}</b> on {{ post.date }}</p>
+      <br>
+      {% endfor %}
+    </div>
+</div>
+<script>
+$('.movies-top').on('change', function() {
+   if($('.movies-top:checked').length > 3) {
+       this.checked = false;
+   }
+});
+
+$(document).ready(function(){
+    $(".movies").submit(function(){
+        if ($(".movies-top:checked").length == 3)
+            return true;
+        else
+            alert("Select min 3!!!");
+            return false;
+    });
+});
+</script>
+
+
+
 
 {% endblock %}
