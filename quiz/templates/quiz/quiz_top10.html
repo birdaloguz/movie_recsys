@@ -91,6 +91,7 @@
   <h1>Movie Recsys</h1>
   <br>
     <div class="funkyradio">
+    <p style="font-size: 25px;">Please select your top 3 favourite movies</p>
       <form class="movies" method="post">
       {% csrf_token %}
           {% for movie in movies %}
@@ -99,8 +100,8 @@
                 <label for="checkbox{{ forloop.counter }}">{{ movie.title }}</label>
               </div>
           {% endfor %}
-          <div class="col-md-6">
-          <input type="submit" name="movie-form" value="Confirm" class="btn btn-primary btn-sm">
+          <div class="col-md-12" style="margin-top: 20px;">
+          <input type="submit" name="movie-form1" value="Confirm" class="btn btn-primary btn-sm">
           </div>
       </form>
     </div>

@@ -83,21 +83,39 @@
 }
 
 </style>
+
+
 <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
 <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
 
-<h1>{{ movies }}</h1>
+<div class="container">
+  <h1>Movie Recsys</h1>
+  <br>
+    <div class="funkyradio">
+        <p style="font-size: 25px;">Please select the movies that you have watched before</p>
+      <form class="movies" method="post">
+      {% csrf_token %}
+          {% for movie in movies %}
+              <div class="funkyradio-success col-md-6">
+                <input class="movies-top" type="checkbox" name="checks[]" value="{{ movie.movie_id }}" id="checkbox{{ forloop.counter }}"/>
+                <label for="checkbox{{ forloop.counter }}">{{ movie.title }}</label>
+              </div>
+          {% endfor %}
+          <div class="col-md-12" style="margin-top: 20px;">
+          <input type="submit" name="movie-form2" value="Confirm" class="btn btn-primary btn-sm">
+          </div>
+      </form>
+    </div>
+
+</div>
+
 <script>
-$('.movies-top').on('change', function() {
-   if($('.movies-top:checked').length > 3) {
-       this.checked = false;
-   }
-});
+
 
 $(document).ready(function(){
     $(".movies").submit(function(){
-        if ($(".movies-top:checked").length == 3)
+        if ($(".movies-top:checked").length >= 3)
             return true;
         else
             alert("Select min 3!!!");
