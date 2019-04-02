@@ -14,7 +14,7 @@
           <div class="panel-body">
             {% for movie in top_user %}
             <p>{{ movie }}</p>
-        {% endfor %}
+            {% endfor %}
           </div>
         </div>
     </div>
@@ -24,7 +24,9 @@
             <h3 class="panel-title">Our prediction</h3>
           </div>
           <div class="panel-body">
-
+            {% for movie in results %}
+            <p>{{ movie }}</p>
+            {% endfor %}
           </div>
         </div>
     </div>
