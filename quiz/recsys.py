@@ -6,7 +6,7 @@ from scipy.sparse.linalg import svds
 
 
 
-def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, popular_1000):
+def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org):
     max_userID= df_ratings_org["user_id"].max()
 
     for movie in hist_user:
