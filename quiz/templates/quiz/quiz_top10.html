@@ -93,9 +93,10 @@
       <form class="movies" method="post">
       {% csrf_token %}
           {% for movie in movies %}
-              <div class="funkyradio-success col-md-6">
+              <div class="funkyradio-success col-md-4">
                 <input class="movies-top" type="checkbox" name="checks[]" value="{{ movie.movie_id }}" id="checkbox{{ forloop.counter }}"/>
-                <label for="checkbox{{ forloop.counter }}">{{ movie.title }}</label>
+                <label style="width: 235px; height: 300px;" for="checkbox{{ forloop.counter }}"><img style="width: 200px; height: 300px; float: right;" src="{{ movie.poster }}"></label>
+               <p>{{ movie.title }}</p>
               </div>
           {% endfor %}
           <div class="col-md-12" style="margin-top: 20px;">

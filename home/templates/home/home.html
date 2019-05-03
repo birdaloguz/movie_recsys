@@ -17,7 +17,11 @@
   <p>Posted by <b>{{ post.user.get_full_name }}</b> on {{ post.date }}</p>
   <br>
   {% endfor %}
-
+    <form method="post">
+        {% csrf_token %}
+        <h2>ratings.csv path</h2><input type="file" id="label"><br>
+        <h2>movies.csv path</h2><input type="file" id="label">
+    </form>
 </div>
 
 {% endblock %}

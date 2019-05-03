@@ -3,6 +3,8 @@ from django.shortcuts import render, redirect
 
 from home.forms import HomeForm
 from home.models import Post
+
+
 class HomeView(TemplateView):
     template_name = 'home/home.html'
 
@@ -25,4 +27,7 @@ class HomeView(TemplateView):
             return redirect('home:home')
 
         args = {'form': form, 'text': text}
+
+    #TODO parse uploaded csv
+
         return render(request, self.template_name, args)

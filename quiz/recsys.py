@@ -34,6 +34,7 @@ def recommend_movies(predictions_df, user_id, movies_df, original_ratings_df, of
     user_row_number = user_id - 1  # UserID starts at 1, not 0
     sorted_user_predictions = predictions_df.iloc[user_row_number].sort_values(ascending=False)  # UserID starts at 1
 
+    # get the scores of offered movies and return top3 for prediction
     scores_top10 = movies_df[movies_df['movie_id'].isin(offered_top)]
     predictions_user = pd.DataFrame(sorted_user_predictions).reset_index().rename(index=str, columns={user_row_number: "prediction"})
     predictions_user['movie_id'] = predictions_user['movie_id'].astype(str).astype(int)
@@ -44,11 +45,11 @@ def recommend_movies(predictions_df, user_id, movies_df, original_ratings_df, of
 
 def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
 
+    #get distance for each movie in history and take the average for prediction
     avg_dict = {}
     for movie in hist_user:
         try:
             distances, indices = model_knn.kneighbors(um_matrix[int(movie)-1], n_neighbors=13950)
-            #sometimes index error
             distances = distances.squeeze().tolist()
             indices = indices.squeeze().tolist()
             for i in range(0, len(indices)):
@@ -67,6 +68,7 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
     raw_recommends = sorted(list(zip(indices, distances)), key=lambda x: x[1])[:0:-1]
     predictions = []
 
+    #get the distances of offered movies and return top3 for prediction
     for i, (idx, dist) in enumerate(raw_recommends):
         if idx in offered_top:
             predictions.append([idx, dist])
@@ -74,3 +76,7 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
     top_3 = [i[0] for i in top_3]
     top_3 = [df_movies_org.loc[df_movies_org["movie_id"]==i].iloc[0]["title"] for i in top_3]
     return top_3
+
+def neural_networks():
+    #TODO
+    pass
