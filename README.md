@@ -7,8 +7,6 @@ Here are the collaborative filtering methods used:
 * Matrix Factorization
 * Neural Networks
 
-An accompanied Medium blog post has been written up and can be viewed here: [The 4 Recommendation Engines That Can Predict Your Movie Tastes](https://medium.com/@james_aka_yale/the-4-recommendation-engines-that-can-predict-your-movie-tastes-bbec857b8223)
-
 ## Requirements
 
 * [Python 3.6](https://www.python.org/downloads/release/python-360/)
