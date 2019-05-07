@@ -6,37 +6,26 @@ from scipy.sparse.linalg import svds
 
 
 
-def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org):
-    max_userID= df_ratings_org["user_id"].max()
+def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns):
 
-    for movie in hist_user:
-        df_ratings_org = df_ratings_org.append(pd.DataFrame([[max_userID+1, int(movie), 5.0]], columns=df_ratings_org.columns), ignore_index=True)
+    u = np.array([np.array([0 for i in range(0, 13950)])])
+    for i in hist_user:
+        u[0][int(i)-1]=5.0
 
-    matrix_df = df_ratings_org.pivot(index='user_id', columns='movie_id', values='rating').fillna(0)
-    # matrix_df = matrix_df[list(popular_1000["movie_id"])]
-    um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
-
-    user_ratings_mean = np.mean(um_matrix, axis=1)
-    R_demeaned = um_matrix - user_ratings_mean.reshape(-1, 1)
-
-    U, sigma, Vt = svds(R_demeaned, k=1)
-    sigma = np.diag(sigma)
-
-    all_user_predicted_ratings = np.dot(np.dot(U, sigma), Vt) #+ user_ratings_mean.reshape(-1, 1)
-    preds_df = pd.DataFrame(all_user_predicted_ratings, columns=matrix_df.columns)
-    predictions = recommend_movies(preds_df, max_userID+1, df_movies_org, df_ratings_org, offered_top)
+    u_prime = u.dot(Vt.T).dot(np.linalg.inv(sigma)).dot(sigma).dot(Vt).ravel()
+    preds_df = pd.DataFrame(np.array([u_prime]), columns=movie_columns)
+    predictions = recommend_movies(preds_df, df_movies_org, df_ratings_org, offered_top)
 
     return predictions
 
 
-def recommend_movies(predictions_df, user_id, movies_df, original_ratings_df, offered_top):
+def recommend_movies(predictions_df, movies_df, original_ratings_df, offered_top):
     # Get and sort the user's predictions
-    user_row_number = user_id - 1  # UserID starts at 1, not 0
-    sorted_user_predictions = predictions_df.iloc[user_row_number].sort_values(ascending=False)  # UserID starts at 1
+    sorted_user_predictions = predictions_df.iloc[0].sort_values(ascending=False)  # UserID starts at 1
 
     # get the scores of offered movies and return top3 for prediction
     scores_top10 = movies_df[movies_df['movie_id'].isin(offered_top)]
-    predictions_user = pd.DataFrame(sorted_user_predictions).reset_index().rename(index=str, columns={user_row_number: "prediction"})
+    predictions_user = pd.DataFrame(sorted_user_predictions).reset_index().rename(index=str, columns={0: "prediction"})
     predictions_user['movie_id'] = predictions_user['movie_id'].astype(str).astype(int)
     scores_top10 = scores_top10.merge(predictions_user, how='left', left_on='movie_id', right_on='movie_id').sort_values(by='prediction', ascending=False)
 

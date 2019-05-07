@@ -2,6 +2,7 @@ from django.views import View
 from django.shortcuts import render, redirect
 import re, scipy, numpy as np, requests, pandas as pd
 regex = re.compile(".*?\((.*?)\)")
+from random import shuffle
 from movies.models import Movie, Tag, Link, Rating
 from quiz.recsys import matrix_factorization, knn
 from scipy import sparse
@@ -22,6 +23,18 @@ triplets = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/tr
 matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
 um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
 
+
+#matrix factorization model
+um_matrix_mf = scipy.sparse.csr_matrix(matrix_df.transpose().values)
+
+movie_columns = matrix_df.transpose().columns
+user_ratings_mean = np.mean(um_matrix_mf, axis=1)
+R_demeaned = um_matrix_mf - user_ratings_mean.reshape(-1, 1)
+
+U, sigma, Vt = svds(R_demeaned, k=1)
+sigma = np.diag(sigma)
+
+
 #knn model
 model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=6, n_jobs=-1)
 model_knn.fit(um_matrix)
@@ -30,21 +43,29 @@ model_knn.fit(um_matrix)
 offered_movies = []
 offered_hist_movies = []
 
-movies_to_offer = triplets.sample(n=30)
+movies_to_offer = triplets.sample(n=40)
 #movies_to_offer = triplets.head(30)
 for index, row in movies_to_offer.iterrows():
-    offered_movies.append(row[1])
-    offered_hist_movies.append(row[2])
-    offered_hist_movies.append(row[3])
-offered_movies=offered_movies[:20]
+    triplet=[row[1], row[2], row[3]]
+    shuffle(triplet)
+    if triplet[0] not in offered_movies:
+        offered_movies.append(triplet[0])
+    if triplet[1] not in offered_hist_movies:
+        offered_hist_movies.append(triplet[1])
+    if triplet[2] not in offered_hist_movies:
+        offered_hist_movies.append(triplet[2])
+
+offered_movies = offered_movies[:20]
+offered_hist_movies = offered_hist_movies[:60]
 
 #get dataframes of movies will be offered
 offered_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_movies)]
 offered_movies = pd.merge(offered_movies, df_link_org, how='left', on=['movie_id'])
+
 offered_hist_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_hist_movies)]
 offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=['movie_id'])
 
-
+#TODO train model at start
 class quiz_mf(View):
     #movies will be offered
     offered_top = []
@@ -89,7 +110,7 @@ class quiz_mf(View):
             quiz_mf.hist_user = checked_hist_movies
 
             #compare results and return to user
-            results = matrix_factorization(quiz_mf.hist_user, quiz_mf.offered_top, df_movies_org, df_ratings_org)
+            results = matrix_factorization(quiz_mf.hist_user, quiz_mf.offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns)
             top_user = [Movie.objects.filter(movie_id=i).values()[:1].get()['title'] for i in quiz_mf.top_user]
             args = {'results': results, "top_user": top_user}
 
@@ -147,7 +168,7 @@ class quiz_knn(View):
 
         return redirect('/quiz_knn')
 
-
+#TODO try new methods
 class quiz_nn(View):
     # movies will be offered
     offered_top = []
