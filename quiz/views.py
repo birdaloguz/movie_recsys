@@ -65,7 +65,6 @@ offered_movies = pd.merge(offered_movies, df_link_org, how='left', on=['movie_id
 offered_hist_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_hist_movies)]
 offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=['movie_id'])
 
-#TODO train model at start
 class quiz_mf(View):
     #movies will be offered
     offered_top = []
