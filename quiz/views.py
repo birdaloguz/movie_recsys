@@ -3,13 +3,13 @@ from django.shortcuts import render, redirect
 import re, scipy, numpy as np, requests, pandas as pd
 regex = re.compile(".*?\((.*?)\)")
 from random import shuffle
-from movies.models import Movie, Tag, Link, Rating
-from quiz.recsys import matrix_factorization, knn
+from quiz.recsys import matrix_factorization, knn, bpr, csr_matrix_indices
 from scipy import sparse
 from scipy.sparse.linalg import svds
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans
 from sklearn.utils import shuffle
+from quiz.theano_bpr import BPR
 
 #load movies and ratings from dataset folder
 df_movies_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/movies.csv", skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
@@ -38,6 +38,16 @@ sigma = np.diag(sigma)
 #knn model
 model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=6, n_jobs=-1)
 model_knn.fit(um_matrix)
+
+#bpr model
+#train_data = []
+#for x in csr_matrix_indices(um_matrix_mf):
+#    train_data.append(x)
+
+# Initialising BPR model, 10 latent factors
+#bpr = BPR(10, len(matrix_df.transpose().index), len(matrix_df.index))
+# Training model, 30 epochs
+#bpr.train(train_data, epochs=30)
 
 #choose movies to offer from triplets
 offered_movies = []
@@ -68,6 +78,7 @@ offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=
 class quiz_mf(View):
     #movies will be offered
     offered_top = []
+    offered_top_dict = []
     offered_hist = []
     #user selections
     top_user = []
@@ -81,7 +92,7 @@ class quiz_mf(View):
 
         #get poster links from OMDB API using movie titles
         random_movies=get_poster_links(random_movies)
-
+        quiz_mf.offered_top_dict=random_movies
         #return offers to user
         quiz_mf.offered_top = [movie["movie_id"] for movie in random_movies]
         args = {'movies': random_movies}
@@ -110,7 +121,8 @@ class quiz_mf(View):
 
             #compare results and return to user
             results = matrix_factorization(quiz_mf.hist_user, quiz_mf.offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns)
-            top_user = [Movie.objects.filter(movie_id=i).values()[:1].get()['title'] for i in quiz_mf.top_user]
+            results = [[item["title"], item["poster"]] for item in quiz_mf.offered_top_dict if item["movie_id"] in results]
+            top_user =[[item["title"], item["poster"]] for item in quiz_mf.offered_top_dict if str(item["movie_id"]) in quiz_mf.top_user]
             args = {'results': results, "top_user": top_user}
 
             return render(request, 'quiz/quiz_results.html', args)
@@ -121,6 +133,7 @@ class quiz_mf(View):
 class quiz_knn(View):
     # movies will be offered
     offered_top = []
+    offered_top_dict = []
     offered_hist = []
     # user selections
     top_user = []
@@ -132,7 +145,7 @@ class quiz_knn(View):
 
         # get poster links from OMDB API using movie titles
         random_movies = get_poster_links(random_movies)
-
+        quiz_knn.offered_top_dict = random_movies
         # return offers to user
         quiz_knn.offered_top = [movie["movie_id"] for movie in random_movies]
         args = {'movies': random_movies}
@@ -160,7 +173,8 @@ class quiz_knn(View):
             quiz_knn.hist_user = checked_hist_movies
 
             results = knn(quiz_knn.hist_user, quiz_knn.offered_top, df_movies_org, um_matrix, model_knn)
-            top_user=[Movie.objects.filter(movie_id=i).values()[:1].get()['title'] for i in quiz_knn.top_user]
+            results = [[item["title"], item["poster"]] for item in quiz_knn.offered_top_dict if item["movie_id"] in results]
+            top_user =[[item["title"], item["poster"]] for item in quiz_knn.offered_top_dict if str(item["movie_id"]) in quiz_knn.top_user]
             args = {'results': results, "top_user": top_user}
 
             return render(request, 'quiz/quiz_results.html', args)
@@ -168,9 +182,10 @@ class quiz_knn(View):
         return redirect('/quiz_knn')
 
 #TODO try new methods
-class quiz_nn(View):
+class quiz_bpr(View):
     # movies will be offered
     offered_top = []
+    offered_top_dict = []
     offered_hist = []
     # user selections
     top_user = []
@@ -182,15 +197,18 @@ class quiz_nn(View):
 
         # get poster links from OMDB API using movie titles
         random_movies = get_poster_links(random_movies)
+        quiz_bpr.offered_top_dict = random_movies
 
-        quiz_nn.offered_top = [movie["movie_id"] for movie in random_movies]
+        # return offers to user
+        quiz_bpr.offered_top = [movie["movie_id"] for movie in random_movies]
         args = {'movies': random_movies}
         return render(request, 'quiz/quiz_top10.html', args)
 
     def post(self, request):
         if 'movie-form1' in request.POST:
+            # get user selections
             checked_top_movies = request.POST.getlist('checks[]')
-            quiz_nn.top_user = checked_top_movies
+            quiz_bpr.top_user = checked_top_movies
 
             hist_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row
                            in offered_hist_movies.iterrows()]
@@ -199,21 +217,22 @@ class quiz_nn(View):
             hist_movies = get_poster_links(hist_movies)
 
             # return offers to user
-            quiz_knn.offered_hist = [movie["movie_id"] for movie in hist_movies]
+            quiz_bpr.offered_hist = [movie["movie_id"] for movie in hist_movies]
             args = {'movies': hist_movies}
             return render(request, 'quiz/quiz_history.html', args)
 
         if 'movie-form2' in request.POST:
             checked_hist_movies = request.POST.getlist('checks[]')
-            quiz_nn.hist_user = checked_hist_movies
+            quiz_bpr.hist_user = checked_hist_movies
 
-            results = knn(quiz_nn.hist_user, quiz_nn.offered_top, df_movies_org, um_matrix, model_knn)
-            top_user=[Movie.objects.filter(movie_id=i).values()[:1].get()['title'] for i in quiz_nn.top_user]
+            results = bpr(quiz_bpr.hist_user, quiz_bpr.offered_top, df_movies_org, um_matrix, model_knn)
+            results = [[item["title"], item["poster"]] for item in quiz_bpr.offered_top_dict if item["movie_id"] in results]
+            top_user =[[item["title"], item["poster"]] for item in quiz_bpr.offered_top_dict if str(item["movie_id"]) in quiz_bpr.top_user]
             args = {'results': results, "top_user": top_user}
 
             return render(request, 'quiz/quiz_results.html', args)
 
-        return redirect('/quiz_nn')
+        return redirect('/quiz_bpr')
 
 def get_poster_links(hist_movies):
     for idx, movie in enumerate(hist_movies):

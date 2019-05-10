@@ -10,7 +10,7 @@ def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, 
 
     u = np.array([np.array([0 for i in range(0, 13950)])])
     for i in hist_user:
-        u[0][int(i)-1]=5.0
+        u[0][df_movies_org.loc[df_movies_org["movie_id"] == int(i)].index.astype(int)[0]]=5.0
 
     u_prime = u.dot(Vt.T).dot(np.linalg.inv(sigma)).dot(sigma).dot(Vt).ravel()
     preds_df = pd.DataFrame(np.array([u_prime]), columns=movie_columns)
@@ -29,7 +29,7 @@ def recommend_movies(predictions_df, movies_df, original_ratings_df, offered_top
     predictions_user['movie_id'] = predictions_user['movie_id'].astype(str).astype(int)
     scores_top10 = scores_top10.merge(predictions_user, how='left', left_on='movie_id', right_on='movie_id').sort_values(by='prediction', ascending=False)
 
-    return list(scores_top10.head(3)['title'])
+    return list(scores_top10.head(3)['movie_id'])
 
 
 def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
@@ -63,9 +63,21 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
             predictions.append([idx, dist])
     top_3 = predictions[:3]
     top_3 = [i[0] for i in top_3]
-    top_3 = [df_movies_org.loc[df_movies_org["movie_id"]==i].iloc[0]["title"] for i in top_3]
     return top_3
 
-def neural_networks():
+def bpr():
     #TODO
     pass
+
+
+def csr_matrix_indices(S):
+    """
+    Return a list of the indices of nonzero entries of a csr_matrix S
+    """
+    major_dim, minor_dim = S.shape
+    minor_indices = S.indices
+
+    major_indices = np.empty(len(minor_indices), dtype=S.indices.dtype)
+    scipy.sparse._sparsetools.expandptr(major_dim, S.indptr, major_indices)
+
+    return zip(major_indices, minor_indices)
