@@ -28,6 +28,6 @@ class HomeView(TemplateView):
 
         args = {'form': form, 'text': text}
 
-    #TODO parse uploaded csv
+
 
         return render(request, self.template_name, args)

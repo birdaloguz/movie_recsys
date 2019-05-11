@@ -131,3 +131,5 @@ LOGIN_URL='/account/login/'
 LOGIN_EXEMPT_URLS = (
     r'^account/logout/$',
 )
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240

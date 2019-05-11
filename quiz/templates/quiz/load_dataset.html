@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="container">
+  <h1>Load Dataset</h1>
+  <br>
+
+    <form method="post">
+        {% csrf_token %}
+        <h2>Dataset folder path</h2><input class="form-control" name="dataset" type="text"><br>
+        <input type="submit" value="Load" class="btn btn-primary btn-sm">
+
+    </form>
+</div>
+
+
+{% endblock %}

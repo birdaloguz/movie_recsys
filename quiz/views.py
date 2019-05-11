@@ -7,73 +7,81 @@ from quiz.recsys import matrix_factorization, knn, bpr, csr_matrix_indices
 from scipy import sparse
 from scipy.sparse.linalg import svds
 from sklearn.neighbors import NearestNeighbors
-from sklearn.cluster import KMeans
+from quiz.clustering import clustering
 from sklearn.utils import shuffle
 from quiz.theano_bpr import BPR
+import os
 
-#load movies and ratings from dataset folder
-df_movies_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/movies.csv", skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
-df_ratings_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/ratings.csv", skiprows=[0],  names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
-df_link_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/links.csv", skiprows=[0],  names=["movie_id", "imdb_id", "tmdb_id"]).drop(columns=['tmdb_id'])
-triplets = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/triplets.csv", names=[1, 2, 3])
+def initializaton(movies_path, ratings_path, links_path):
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
+    # load movies and ratings from dataset folder
+    df_movies_org = pd.read_csv(movies_path, skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
+    df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
+    df_link_org = pd.read_csv(links_path, skiprows=[0], names=["movie_id", "imdb_id", "tmdb_id"]).drop(columns=['tmdb_id'])
 
-#df_movies_org = df_movies_org[df_movies_org["movie_id"].isin(df_ratings_org.movie_id.unique())]
+    triplets = clustering(df_ratings_org)
+    triplets = pd.DataFrame(triplets, columns=[1, 2, 3])
 
-#create movie-ratings matrix
-matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
-um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
+    # df_movies_org = df_movies_org[df_movies_org["movie_id"].isin(df_ratings_org.movie_id.unique())]
 
+    # create movie-ratings matrix
+    matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
+    um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
 
-#matrix factorization model
-um_matrix_mf = scipy.sparse.csr_matrix(matrix_df.transpose().values)
+    # matrix factorization model
+    um_matrix_mf = scipy.sparse.csr_matrix(matrix_df.transpose().values)
 
-movie_columns = matrix_df.transpose().columns
-user_ratings_mean = np.mean(um_matrix_mf, axis=1)
-R_demeaned = um_matrix_mf - user_ratings_mean.reshape(-1, 1)
+    movie_columns = matrix_df.transpose().columns
+    user_ratings_mean = np.mean(um_matrix_mf, axis=1)
+    R_demeaned = um_matrix_mf - user_ratings_mean.reshape(-1, 1)
 
-U, sigma, Vt = svds(R_demeaned, k=1)
-sigma = np.diag(sigma)
+    U, sigma, Vt = svds(R_demeaned, k=1)
+    sigma = np.diag(sigma)
 
+    # knn model
+    model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=6, n_jobs=-1)
+    model_knn.fit(um_matrix)
 
-#knn model
-model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=6, n_jobs=-1)
-model_knn.fit(um_matrix)
+    # bpr model
+    # train_data = []
+    # for x in csr_matrix_indices(um_matrix_mf):
+    #    train_data.append(x)
 
-#bpr model
-#train_data = []
-#for x in csr_matrix_indices(um_matrix_mf):
-#    train_data.append(x)
+    # Initialising BPR model, 10 latent factors
+    # bpr = BPR(5, len(matrix_df.transpose().index), len(matrix_df.index))
+    # Training model, 30 epochs
+    # bpr.train(train_data, epochs=1)
 
-# Initialising BPR model, 10 latent factors
-#bpr = BPR(10, len(matrix_df.transpose().index), len(matrix_df.index))
-# Training model, 30 epochs
-#bpr.train(train_data, epochs=30)
+    # choose movies to offer from triplets
+    offered_movies = []
+    offered_hist_movies = []
 
-#choose movies to offer from triplets
-offered_movies = []
-offered_hist_movies = []
+    movies_to_offer = triplets.sample(n=40)
+    # movies_to_offer = triplets.head(30)
+    for index, row in movies_to_offer.iterrows():
+        triplet = [row[1], row[2], row[3]]
+        triplet = shuffle(triplet)
+        if triplet[0] not in offered_movies and triplet[0] not in offered_hist_movies:
+            offered_movies.append(triplet[0])
+        if triplet[1] not in offered_hist_movies and triplet[1] not in offered_movies:
+            offered_hist_movies.append(triplet[1])
+        if triplet[2] not in offered_hist_movies and triplet[2] not in offered_movies:
+            offered_hist_movies.append(triplet[2])
 
-movies_to_offer = triplets.sample(n=40)
-#movies_to_offer = triplets.head(30)
-for index, row in movies_to_offer.iterrows():
-    triplet=[row[1], row[2], row[3]]
-    shuffle(triplet)
-    if triplet[0] not in offered_movies:
-        offered_movies.append(triplet[0])
-    if triplet[1] not in offered_hist_movies:
-        offered_hist_movies.append(triplet[1])
-    if triplet[2] not in offered_hist_movies:
-        offered_hist_movies.append(triplet[2])
+    offered_movies = offered_movies[:20]
+    offered_hist_movies = offered_hist_movies[:60]
 
-offered_movies = offered_movies[:20]
-offered_hist_movies = offered_hist_movies[:60]
+    # get dataframes of movies will be offered
+    offered_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_movies)]
+    offered_movies = pd.merge(offered_movies, df_link_org, how='left', on=['movie_id'])
 
-#get dataframes of movies will be offered
-offered_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_movies)]
-offered_movies = pd.merge(offered_movies, df_link_org, how='left', on=['movie_id'])
+    offered_hist_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_hist_movies)]
+    offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=['movie_id'])
 
-offered_hist_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_hist_movies)]
-offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=['movie_id'])
+dataset_folder = os.path.dirname(os.path.dirname(__file__))+"/dataset/ml-20m/ml-20m/"
+
+initializaton(dataset_folder+"movies.csv", dataset_folder+"ratings.csv", dataset_folder+"links.csv")
+
 
 class quiz_mf(View):
     #movies will be offered
@@ -84,12 +92,11 @@ class quiz_mf(View):
     top_user = []
     hist_user = []
 
-    df_ratings = df_ratings_org
-    df_movies = df_movies_org
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
 
     def get(self, request):
         random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in offered_movies.iterrows()]
-
+        print(df_ratings_org)
         #get poster links from OMDB API using movie titles
         random_movies=get_poster_links(random_movies)
         quiz_mf.offered_top_dict=random_movies
@@ -139,6 +146,8 @@ class quiz_knn(View):
     top_user = []
     hist_user = []
 
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
+
     def get(self, request):
         random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in
                          offered_movies.iterrows()]
@@ -181,7 +190,7 @@ class quiz_knn(View):
 
         return redirect('/quiz_knn')
 
-#TODO try new methods
+
 class quiz_bpr(View):
     # movies will be offered
     offered_top = []
@@ -190,6 +199,8 @@ class quiz_bpr(View):
     # user selections
     top_user = []
     hist_user = []
+
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
 
     def get(self, request):
         random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in
@@ -250,3 +261,13 @@ def get_poster_links(hist_movies):
             hist_movies[idx]["poster"] = "NONE"
         hist_movies[idx]["title"] = re.sub("[\(\[].*?[\)\]]", "", movie["title"])
     return hist_movies
+
+class load_dataset(View):
+    def get(self, request):
+
+        return render(request, "quiz/load_dataset.html")
+
+    def post(self, request):
+        dataset_folder = request.POST.get('dataset')
+        initializaton(dataset_folder + "/movies.csv", dataset_folder + "/ratings.csv", dataset_folder + "/links.csv")
+        return render(request, "quiz/load_dataset.html")
