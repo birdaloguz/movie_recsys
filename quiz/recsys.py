@@ -7,13 +7,16 @@ from scipy.sparse.linalg import svds
 
 
 def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns):
-
+    #create new user vector from selected history set
     u = np.array([np.array([0 for i in range(0, 13950)])])
     for i in hist_user:
         u[0][df_movies_org.loc[df_movies_org["movie_id"] == int(i)].index.astype(int)[0]]=5.0
 
+    #calculate predictions for new user
     u_prime = u.dot(Vt.T).dot(np.linalg.inv(sigma)).dot(sigma).dot(Vt).ravel()
     preds_df = pd.DataFrame(np.array([u_prime]), columns=movie_columns)
+
+    #get top 3 movie in offered set with the highest prediction
     predictions = recommend_movies(preds_df, df_movies_org, df_ratings_org, offered_top)
 
     return predictions
@@ -38,6 +41,7 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
     avg_dict = {}
     for movie in hist_user:
         try:
+            #get item based predictions for each item in history and sum the distances
             distances, indices = model_knn.kneighbors(um_matrix[int(movie)-1], n_neighbors=13950)
             distances = distances.squeeze().tolist()
             indices = indices.squeeze().tolist()
@@ -50,6 +54,7 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
             print(str(movie) + " index out of range!!!")
     indices = []
     distances = []
+    #dict to list
     for key, value in avg_dict.items():
         indices.append(int(key))
         distances.append(value)
