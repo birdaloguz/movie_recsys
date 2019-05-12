@@ -5,7 +5,17 @@ This application is a Django based movie recommendation system. It includes vari
 Here are the collaborative filtering methods used:
 * KNN
 * Matrix Factorization
-* Neural Networks
+* [Bayesian Personalised Ranking](https://arxiv.org/pdf/1205.2618.pdf)
+
+##Flexible Dataset
+Dataset loading page is available in the application. Any user item rating dataset can be used to use the application. 
+But the format should be like MovieLens dataset. MovieLens dataset would be loaded if you do not load any dataset after running the server.
+In dataset loading page there is an input for the dataset folder path. This path should include "movies.csv", "ratings.csv" and "links.csv".
+Columns of the csv files should be:
+
+* movies.csv: movie_id, title
+* ratings.csv: user_id, movie_id, rating
+* links.csv: movie_id, imdb_id
 
 ## Requirements
 
