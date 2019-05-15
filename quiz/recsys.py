@@ -3,8 +3,9 @@ import numpy as np
 from scipy import sparse
 import scipy
 from scipy.sparse.linalg import svds
-
-
+from sklearn.metrics.pairwise import cosine_similarity
+import heapq
+from quiz.theano_bpr import BPR
 
 def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns):
     #create new user vector from selected history set
@@ -70,9 +71,27 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
     top_3 = [i[0] for i in top_3]
     return top_3
 
-def bpr():
-    #TODO
-    pass
+def bpr(hist_user, offered_top, df_movies_org, df_ratings_org, bpr_model, movie_indices):
+    matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
+    new_user_id = df_ratings_org['user_id'].max()+1
+    for movie in hist_user:
+        df_ratings_org = df_ratings_org.append({"user_id": new_user_id, "movie_id": movie, "rating": 5.0}, ignore_index=True)
+    um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
+    pairwise_distances = cosine_similarity(um_matrix)
+    similar_user_id = heapq.nlargest(1, heapq.nlargest(1, range(len(pairwise_distances[-1][:-1])), key=pairwise_distances[-1][:-1].__getitem__))[0]+1
+    bpr_predictions = bpr_model.predictions(similar_user_id)
+    indices = list(movie_indices)
+
+    raw_recommends = sorted(list(zip(indices, bpr_predictions)), key=lambda x: x[1])[:0:-1]
+    predictions = []
+
+    # get the distances of offered movies and return top3 for prediction
+    for i, (idx, dist) in enumerate(raw_recommends):
+        if idx in offered_top:
+            predictions.append([idx, dist])
+    top_3 = predictions[:3]
+    top_3 = [i[0] for i in top_3]
+    return top_3
 
 
 def csr_matrix_indices(S):

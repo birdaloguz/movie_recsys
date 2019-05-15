@@ -10,10 +10,11 @@ from sklearn.neighbors import NearestNeighbors
 from quiz.clustering import clustering
 from sklearn.utils import shuffle
 from quiz.theano_bpr import BPR
+from six.moves import cPickle
 import os
 
-def initializaton(movies_path, ratings_path, links_path):
-    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
+def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies, bpr_model
     # load movies and ratings from dataset folder
     df_movies_org = pd.read_csv(movies_path, skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
     df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
@@ -43,14 +44,25 @@ def initializaton(movies_path, ratings_path, links_path):
     model_knn.fit(um_matrix)
 
     # bpr model
-    # train_data = []
-    # for x in csr_matrix_indices(um_matrix_mf):
-    #    train_data.append(x)
+    train_data = []
+    for x in csr_matrix_indices(um_matrix_mf):
+        train_data.append(x)
 
-    # Initialising BPR model, 10 latent factors
-    # bpr = BPR(5, len(matrix_df.transpose().index), len(matrix_df.index))
-    # Training model, 30 epochs
-    # bpr.train(train_data, epochs=1)
+    if if_new_bpr:
+        # Initialising BPR model, 10 latent factors
+        bpr_model = BPR(5, len(matrix_df.transpose().index), len(matrix_df.index))
+        # Training model, 30 epochs
+        bpr_model.train(train_data, epochs=1)
+
+        #save bpr model
+        f = open(os.path.dirname(os.path.abspath(__file__)) + '/models/bpr_model.save', 'wb')
+        cPickle.dump(bpr_model, f, protocol=cPickle.HIGHEST_PROTOCOL)
+        f.close()
+    else:
+        #load existing bpr model
+        f = open(os.path.dirname(os.path.abspath(__file__)) + '/models/bpr_model.save', 'rb')
+        bpr_model = cPickle.load(f)
+        f.close()
 
     # choose movies to offer from triplets
     offered_movies = []
@@ -80,7 +92,7 @@ def initializaton(movies_path, ratings_path, links_path):
 
 dataset_folder = os.path.dirname(os.path.dirname(__file__))+"/dataset/ml-20m/ml-20m/"
 
-initializaton(dataset_folder+"movies.csv", dataset_folder+"ratings.csv", dataset_folder+"links.csv")
+initializaton(dataset_folder+"movies.csv", dataset_folder+"ratings.csv", dataset_folder+"links.csv", False)
 
 
 class quiz_mf(View):
@@ -200,7 +212,7 @@ class quiz_bpr(View):
     top_user = []
     hist_user = []
 
-    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
+    global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies, bpr_model
 
     def get(self, request):
         random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in
@@ -236,7 +248,7 @@ class quiz_bpr(View):
             checked_hist_movies = request.POST.getlist('checks[]')
             quiz_bpr.hist_user = checked_hist_movies
 
-            results = bpr(quiz_bpr.hist_user, quiz_bpr.offered_top, df_movies_org, um_matrix, model_knn)
+            results = bpr(quiz_bpr.hist_user, quiz_bpr.offered_top, df_movies_org, df_ratings_org, bpr_model, matrix_df.index)
             results = [[item["title"], item["poster"]] for item in quiz_bpr.offered_top_dict if item["movie_id"] in results]
             top_user =[[item["title"], item["poster"]] for item in quiz_bpr.offered_top_dict if str(item["movie_id"]) in quiz_bpr.top_user]
             args = {'results': results, "top_user": top_user}
@@ -268,6 +280,8 @@ class load_dataset(View):
         return render(request, "quiz/load_dataset.html")
 
     def post(self, request):
+
         dataset_folder = request.POST.get('dataset')
-        initializaton(dataset_folder + "/movies.csv", dataset_folder + "/ratings.csv", dataset_folder + "/links.csv")
+
+        initializaton(dataset_folder + "/movies.csv", dataset_folder + "/ratings.csv", dataset_folder + "/links.csv", True)
         return render(request, "quiz/load_dataset.html")
