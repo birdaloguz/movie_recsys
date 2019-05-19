@@ -7,7 +7,7 @@ import os
 
 #load movies and ratings from dataset folder
 df_movies_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/movies.csv", skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
-df_ratings_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/ratings.csv", skiprows=[0],  names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(100000)
+df_ratings_org = pd.read_csv("/home/binglidev001/movie_recsys/dataset/ml-20m/ml-20m/ratings.csv", skiprows=[0],  names=["user_id", "movie_id", "rating", "timestamp"]).sort_values(by='timestamo').tail(1000000)
 
 #create movie-ratings matrix
 matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)

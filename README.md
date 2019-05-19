@@ -5,7 +5,9 @@ This application is a Django based movie recommendation system. It includes vari
 Here are the collaborative filtering methods used:
 * KNN
 * Matrix Factorization
-* [Bayesian Personalised Ranking](https://arxiv.org/pdf/1205.2618.pdf)
+* [Bayesian Personalised Ranking](https://arxiv.org/pdf/1205.2618.pdf) 
+
+###### _&copy;2014 British Broadcasting Corporation and contributors_
 
 ## Flexible Dataset
 Dataset loading page is available in the application. Any user item rating dataset can be used to use the application. 

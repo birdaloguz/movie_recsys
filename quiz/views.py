@@ -17,7 +17,8 @@ def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
     global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies, bpr_model
     # load movies and ratings from dataset folder
     df_movies_org = pd.read_csv(movies_path, skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
-    df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
+    #df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
+    df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).sort_values(by='timestamp').tail(1000000)
     df_link_org = pd.read_csv(links_path, skiprows=[0], names=["movie_id", "imdb_id", "tmdb_id"]).drop(columns=['tmdb_id'])
 
     triplets = clustering(df_ratings_org)
