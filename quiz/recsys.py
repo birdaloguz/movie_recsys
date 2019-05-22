@@ -10,6 +10,8 @@ from quiz.theano_bpr import BPR
 def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns):
     #create new user vector from selected history set
 
+    df_movies_org = df_movies_org.reset_index()
+
     u = np.array([np.array([0 for i in range(0, len(movie_columns))])])
     for i in hist_user:
         u[0][df_movies_org.loc[df_movies_org["movie_id"] == int(i)].index.astype(int)[0]]=5.0

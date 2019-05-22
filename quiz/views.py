@@ -24,7 +24,7 @@ def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
     triplets = clustering(df_ratings_org)
     triplets = pd.DataFrame(triplets, columns=[1, 2, 3])
 
-    # df_movies_org = df_movies_org[df_movies_org["movie_id"].isin(df_ratings_org.movie_id.unique())]
+    df_movies_org = df_movies_org[df_movies_org["movie_id"].isin(df_ratings_org.movie_id.unique())]
 
     # create movie-ratings matrix
     matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
