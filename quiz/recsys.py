@@ -3,7 +3,7 @@ import numpy as np
 from scipy import sparse
 import scipy
 from scipy.sparse.linalg import svds
-from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
+from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances, euclidean_distances
 import heapq
 from quiz.theano_bpr import BPR
 
@@ -85,16 +85,17 @@ def knn(hist_user, offered_top, matrix_df, um_matrix, model_knn, movie_columns, 
 def bpr(hist_user, offered_top, df_movies_org, df_ratings_org, bpr_model, movie_indices):
     new_user_id = df_ratings_org['user_id'].max()+1
     for movie in hist_user:
-        df_ratings_org = df_ratings_org.append({"user_id": new_user_id, "movie_id": movie, "rating": 10.0}, ignore_index=True)
+        df_ratings_org = df_ratings_org.append({"user_id": new_user_id, "movie_id": int(movie), "rating": 10.0}, ignore_index=True)
     matrix_df = df_ratings_org.pivot(index='user_id', columns='movie_id', values='rating').fillna(0)
     um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
-    pairwise_distances = cosine_similarity(um_matrix)
 
-    print(pairwise_distances[-1])
-    for i in pairwise_distances[-1]:
-        if i > 0:
-            print(i)
-    similar_user_id = heapq.nlargest(1, heapq.nlargest(1, range(len(pairwise_distances[-1][:-1])), key=pairwise_distances[-1][:-1].__getitem__))[0]+1
+    distances = cosine_similarity(um_matrix)
+    #distances = 1 - pairwise_distances(matrix_df.T, metric="hamming")
+    #distances = euclidean_distances(um_matrix)
+
+    #similar_user_id = heapq.nlargest(1, heapq.nlargest(1, range(len(distances[-1][:-1])), key=distances[-1][:-1].__getitem__))[0]+1
+    similar_user_id = list(distances[-1][:-1]).index(max(list(distances[-1][:-1])))+1
+
     bpr_predictions = bpr_model.predictions(similar_user_id)
     indices = list(movie_indices)
 
