@@ -206,7 +206,6 @@ class BPR(object):
         h = self.H.get_value()
         b = self.B.get_value()
         user_vector = w[user_index,:]
-        print(w)
         return user_vector.dot(h.T) + b
 
     def prediction(self, user_index, item_index):

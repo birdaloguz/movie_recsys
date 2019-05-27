@@ -11,7 +11,7 @@ def clustering(df_ratings_org):
     df_ratings = df_ratings_org[['movie_id', 'rating']].groupby(['movie_id']).size().reset_index(name='counts')
     df_ratings = df_ratings.sort_values(by=['counts'], ascending=False)
     popular = df_ratings
-    popular =popular.loc[popular["counts"]>=500]
+    popular =popular.loc[popular["counts"]>=100]
     df_ratings_org = df_ratings_org.loc[df_ratings_org["movie_id"].isin(popular["movie_id"].values)]
 
     matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)

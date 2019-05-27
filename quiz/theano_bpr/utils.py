@@ -58,12 +58,9 @@ def load_data_from_movielens(url, threshold, users_to_i = {}, items_to_i = {}):
     raw_data = []
     for line in urllib.request.urlopen(url).readlines():
         user, item, rating, timestamp = line.decode("utf-8").split('\t')
-        print(type(rating))
-        print(type(threshold))
         if type(threshold) is not dict:
             if int(rating) > threshold:
                 raw_data.append((user, item))
-                print(len(raw_data))
     return load_data_from_array(raw_data)
 
 def load_data_from_array(array, users_to_i = {}, items_to_i = {}):

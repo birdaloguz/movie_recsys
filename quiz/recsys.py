@@ -3,7 +3,7 @@ import numpy as np
 from scipy import sparse
 import scipy
 from scipy.sparse.linalg import svds
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 import heapq
 from quiz.theano_bpr import BPR
 
@@ -14,7 +14,7 @@ def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, 
 
     u = np.array([np.array([0 for i in range(0, len(movie_columns))])])
     for i in hist_user:
-        u[0][df_movies_org.loc[df_movies_org["movie_id"] == int(i)].index.astype(int)[0]]=5.0
+        u[0][df_movies_org.loc[df_movies_org["movie_id"] == int(i)].index.astype(int)[0]]=10.0
 
     #calculate predictions for new user
     u_prime = u.dot(Vt.T).dot(np.linalg.inv(sigma)).dot(sigma).dot(Vt).ravel()
@@ -39,28 +39,35 @@ def recommend_movies(predictions_df, movies_df, original_ratings_df, offered_top
     return list(scores_top10.head(3)['movie_id'])
 
 
-def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
+def knn(hist_user, offered_top, matrix_df, um_matrix, model_knn, movie_columns, df_movies_org):
 
     #get distance for each movie in history and take the average for prediction
     avg_dict = {}
+    #print(matrix_df)
+    df_movies_org["index"] = df_movies_org.index
+
+    idx_dict = df_movies_org.set_index('movie_id').T.to_dict('list')
+    idx_reverse_dict = df_movies_org.set_index('index').T.to_dict('list')
+
     for movie in hist_user:
         try:
             #get item based predictions for each item in history and sum the distances
-            distances, indices = model_knn.kneighbors(um_matrix[int(movie)-1], n_neighbors=13950)
+            distances, indices = model_knn.kneighbors(um_matrix[idx_dict[int(movie)][0]], n_neighbors=len(movie_columns))
             distances = distances.squeeze().tolist()
             indices = indices.squeeze().tolist()
             for i in range(0, len(indices)):
-                if str(indices[i] not in avg_dict):
+                if str(indices[i]) not in avg_dict:
                     avg_dict[str(indices[i])] = distances[i]
                 else:
                     avg_dict[str(indices[i])] += distances[i]
         except:
             print(str(movie) + " index out of range!!!")
+
     indices = []
     distances = []
     #dict to list
     for key, value in avg_dict.items():
-        indices.append(int(key))
+        indices.append(idx_reverse_dict[int(key)][0])
         distances.append(value)
 
     raw_recommends = sorted(list(zip(indices, distances)), key=lambda x: x[1])[:0:-1]
@@ -72,15 +79,21 @@ def knn(hist_user, offered_top, df_movies_org, um_matrix, model_knn):
             predictions.append([idx, dist])
     top_3 = predictions[:3]
     top_3 = [i[0] for i in top_3]
+
     return top_3
 
 def bpr(hist_user, offered_top, df_movies_org, df_ratings_org, bpr_model, movie_indices):
-    matrix_df = df_ratings_org.pivot(index='movie_id', columns='user_id', values='rating').fillna(0)
     new_user_id = df_ratings_org['user_id'].max()+1
     for movie in hist_user:
-        df_ratings_org = df_ratings_org.append({"user_id": new_user_id, "movie_id": movie, "rating": 5.0}, ignore_index=True)
+        df_ratings_org = df_ratings_org.append({"user_id": new_user_id, "movie_id": movie, "rating": 10.0}, ignore_index=True)
+    matrix_df = df_ratings_org.pivot(index='user_id', columns='movie_id', values='rating').fillna(0)
     um_matrix = scipy.sparse.csr_matrix(matrix_df.values)
     pairwise_distances = cosine_similarity(um_matrix)
+
+    print(pairwise_distances[-1])
+    for i in pairwise_distances[-1]:
+        if i > 0:
+            print(i)
     similar_user_id = heapq.nlargest(1, heapq.nlargest(1, range(len(pairwise_distances[-1][:-1])), key=pairwise_distances[-1][:-1].__getitem__))[0]+1
     bpr_predictions = bpr_model.predictions(similar_user_id)
     indices = list(movie_indices)
