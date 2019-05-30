@@ -13,18 +13,17 @@ from quiz.theano_bpr import BPR
 from six.moves import cPickle
 import os
 
-def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
+def initializaton(movies_path, ratings_path, if_new_bpr):
     global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies, bpr_model
     # load movies and ratings from dataset folder
-    #df_movies_org = pd.read_csv(movies_path, skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
-    #df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
-    #df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).sort_values(by='timestamp').tail(1000000)
-    df_link_org = pd.read_csv(links_path, skiprows=[0], names=["movie_id", "imdb_id", "tmdb_id"]).drop(columns=['tmdb_id'])
 
-    df_movies_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/movies.dat', sep='::', header=None,
-                                names=["movie_id", "title", "genre"])
-    df_ratings_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/ratings.dat', sep='::', header=None,
-                                 names=["user_id", "movie_id", "rating", "timestamp"])
+    if if_new_bpr:
+        df_movies_org = pd.read_csv(movies_path, skiprows=[0], names=["movie_id", "title", "genres"]).drop(columns=['genres'])
+        df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
+        df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).sort_values(by='timestamp').tail(1000000)
+    else:
+        df_movies_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/movies.dat', sep='::', header=None, names=["movie_id", "title", "genre"])
+        df_ratings_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/ratings.dat', sep='::', header=None, names=["user_id", "movie_id", "rating", "timestamp"])
 
     triplets = clustering(df_ratings_org)
     triplets = pd.DataFrame(triplets, columns=[1, 2, 3])
@@ -40,21 +39,22 @@ def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
 
     movie_columns = matrix_df.transpose().columns
     user_ratings_mean = np.mean(um_matrix_mf, axis=1)
-    R_demeaned = um_matrix_mf - user_ratings_mean.reshape(-1, 1)
+    R_demeaned = um_matrix_mf# - user_ratings_mean.reshape(-1, 1)
 
-    U, sigma, Vt = svds(R_demeaned, k=1)
+    U, sigma, Vt = svds(R_demeaned, k=50)
     sigma = np.diag(sigma)
 
     # knn model
     model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=6, n_jobs=-1)
     model_knn.fit(um_matrix)
 
-    # bpr model
-    train_data = []
-    for x in csr_matrix_indices(um_matrix_mf):
-        train_data.append(x)
 
     if if_new_bpr:
+        # bpr model
+        train_data = []
+        for x in csr_matrix_indices(um_matrix_mf):
+            train_data.append(x)
+
         # Initialising BPR model, 10 latent factors
         bpr_model = BPR(5, len(matrix_df.transpose().index), len(matrix_df.index))
         # Training model, 30 epochs
@@ -91,14 +91,12 @@ def initializaton(movies_path, ratings_path, links_path, if_new_bpr):
 
     # get dataframes of movies will be offered
     offered_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_movies)]
-    offered_movies = pd.merge(offered_movies, df_link_org, how='left', on=['movie_id'])
 
     offered_hist_movies = df_movies_org.loc[df_movies_org["movie_id"].isin(offered_hist_movies)]
-    offered_hist_movies = pd.merge(offered_hist_movies, df_link_org, how='left', on=['movie_id'])
 
 dataset_folder = os.path.dirname(os.path.dirname(__file__))+"/dataset/ml-20m/ml-20m/"
 
-initializaton(dataset_folder+"movies.csv", dataset_folder+"ratings.csv", dataset_folder+"links.csv", False)
+initializaton(dataset_folder+"movies.csv", dataset_folder+"ratings.csv", False)
 
 
 class quiz_mf(View):
@@ -113,7 +111,7 @@ class quiz_mf(View):
     global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
 
     def get(self, request):
-        random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in offered_movies.iterrows()]
+        random_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row in offered_movies.iterrows()]
 
         #get poster links from OMDB API using movie titles
         random_movies=get_poster_links(random_movies)
@@ -129,7 +127,7 @@ class quiz_mf(View):
             checked_top_movies = request.POST.getlist('checks[]')
             quiz_mf.top_user = checked_top_movies
 
-            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in offered_hist_movies.iterrows()]
+            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row in offered_hist_movies.iterrows()]
 
             # get poster links from OMDB API using movie titles
             hist_movies = get_poster_links(hist_movies)
@@ -143,7 +141,8 @@ class quiz_mf(View):
             #get user selections
             checked_hist_movies = request.POST.getlist('checks[]')
             quiz_mf.hist_user = checked_hist_movies
-
+            print(quiz_mf.hist_user)
+            print(quiz_mf.offered_top)
             #compare results and return to user
             results = matrix_factorization(quiz_mf.hist_user, quiz_mf.offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns)
             results = [[item["title"], item["poster"]] for item in quiz_mf.offered_top_dict if item["movie_id"] in results]
@@ -167,7 +166,7 @@ class quiz_knn(View):
     global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies
 
     def get(self, request):
-        random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in
+        random_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row in
                          offered_movies.iterrows()]
 
         # get poster links from OMDB API using movie titles
@@ -184,7 +183,7 @@ class quiz_knn(View):
             checked_top_movies = request.POST.getlist('checks[]')
             quiz_knn.top_user = checked_top_movies
 
-            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row
+            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row
                            in offered_hist_movies.iterrows()]
 
             # get poster links from OMDB API using movie titles
@@ -221,7 +220,7 @@ class quiz_bpr(View):
     global df_movies_org, df_ratings_org, df_link_org, triplets, matrix_df, um_matrix, um_matrix_mf, U, sigma, Vt, movie_columns, model_knn, offered_movies, offered_hist_movies, bpr_model
 
     def get(self, request):
-        random_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row in
+        random_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row in
                          offered_movies.iterrows()]
 
         # get poster links from OMDB API using movie titles
@@ -239,7 +238,7 @@ class quiz_bpr(View):
             checked_top_movies = request.POST.getlist('checks[]')
             quiz_bpr.top_user = checked_top_movies
 
-            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title'], 'imdb_id': row['imdb_id']} for idx, row
+            hist_movies = [{'movie_id': row['movie_id'], 'title': row['title']} for idx, row
                            in offered_hist_movies.iterrows()]
 
             # get poster links from OMDB API using movie titles
@@ -289,5 +288,5 @@ class load_dataset(View):
 
         dataset_folder = request.POST.get('dataset')
 
-        initializaton(dataset_folder + "/movies.csv", dataset_folder + "/ratings.csv", dataset_folder + "/links.csv", True)
+        initializaton(dataset_folder + "/movies.csv", dataset_folder + "/ratings.csv", True)
         return render(request, "quiz/load_dataset.html")
