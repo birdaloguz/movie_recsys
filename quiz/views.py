@@ -141,8 +141,6 @@ class quiz_mf(View):
             #get user selections
             checked_hist_movies = request.POST.getlist('checks[]')
             quiz_mf.hist_user = checked_hist_movies
-            print(quiz_mf.hist_user)
-            print(quiz_mf.offered_top)
             #compare results and return to user
             results = matrix_factorization(quiz_mf.hist_user, quiz_mf.offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns)
             results = [[item["title"], item["poster"]] for item in quiz_mf.offered_top_dict if item["movie_id"] in results]
