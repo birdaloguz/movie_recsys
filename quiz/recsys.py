@@ -2,10 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy import sparse
 import scipy
-from scipy.sparse.linalg import svds
-from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances, euclidean_distances
-import heapq
-from quiz.theano_bpr import BPR
+from sklearn.metrics.pairwise import cosine_similarity
 
 def matrix_factorization(hist_user, offered_top, df_movies_org, df_ratings_org, U, sigma, Vt, movie_columns):
     #create new user vector from selected history set

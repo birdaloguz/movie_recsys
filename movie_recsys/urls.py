@@ -21,7 +21,6 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^account/', include('accounts.urls', namespace='accounts')),
     url(r'^home/', include('home.urls', namespace='home')),
-    url(r'^movies/', include('movies.urls', namespace='movies')),
     url(r'^quiz/', include('quiz.urls', namespace='quiz')),
     url(r'^$', home_redirect, name='home_redirect'),
 
