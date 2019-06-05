@@ -22,8 +22,8 @@ def initializaton(movies_path, ratings_path, if_new_bpr):
         df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).drop(columns=['timestamp']).head(1000000)
         df_ratings_org = pd.read_csv(ratings_path, skiprows=[0], names=["user_id", "movie_id", "rating", "timestamp"]).sort_values(by='timestamp').tail(1000000)
     else:
-        df_movies_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/movies.dat', sep='::', header=None, names=["movie_id", "title", "genre"])
-        df_ratings_org = pd.read_csv('/home/binglidev001/movie_recsys/dataset/movietweetings/ratings.dat', sep='::', header=None, names=["user_id", "movie_id", "rating", "timestamp"])
+        df_movies_org = pd.read_csv(os.path.dirname(os.path.dirname(__file__))+'/dataset/movietweetings/movies.dat', sep='::', header=None, names=["movie_id", "title", "genre"])
+        df_ratings_org = pd.read_csv(os.path.dirname(os.path.dirname(__file__))+'/dataset/movietweetings/ratings.dat', sep='::', header=None, names=["user_id", "movie_id", "rating", "timestamp"])
 
     triplets = clustering(df_ratings_org)
     triplets = pd.DataFrame(triplets, columns=[1, 2, 3])
