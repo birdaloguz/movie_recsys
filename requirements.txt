@@ -1,4 +1,4 @@
-Django==1.11.20
+Django==1.11.29
 requests==2.18.4
 Theano==1.0.4
 pandas==0.24.2
